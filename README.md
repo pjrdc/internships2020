@@ -4,6 +4,7 @@ RDC Internships Aug. 2020
 Directories
 
 Topic:       I-RDC Labs
+
 Directory:   /rdc-labs
 
 Description:
@@ -13,6 +14,7 @@ Getting to know the complete stream of preparation, acquisition, post-processing
 
 
 Topic:       Face Reidentification
+
 Directory:   /face-reidentification
 
 Description: 
@@ -22,6 +24,7 @@ People's facial information - this is the reference image, is collected with a c
 
 
 Topic:       Edge AI - Computer Vision
+
 Directory:   /edgeai-cv
 
 
