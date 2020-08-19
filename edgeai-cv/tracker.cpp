@@ -766,6 +766,11 @@ bool PedestrianTracker::IsTrackForgotten(const Track &track) const {
     return (track.lost > params_.forget_delay);
 }
 
+size_t PedestrianTracker::Count() const {
+    size_t count = tracks_counter_;
+  
+    return count;
+}
 std::unordered_map<size_t, std::vector<cv::Point>>
 PedestrianTracker::GetActiveTracks() const {
     std::unordered_map<size_t, std::vector<cv::Point>> active_tracks;
