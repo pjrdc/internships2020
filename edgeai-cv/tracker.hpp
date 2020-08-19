@@ -249,6 +249,12 @@ public:
     void set_distance_strong(const Distance &val);
 
     ///
+    /// \brief Returns number of counted people.
+    /// \return a number of counted people.
+    ///
+    size_t Count() const;
+    
+    ///
     /// \brief Returns a detection log which is used for tracks saving.
     /// \param[in] valid_only If it is true the method returns valid track only.
     /// \return a detection log which is used for tracks saving.
