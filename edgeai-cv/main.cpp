@@ -217,7 +217,16 @@ int main_work(int argc, char **argv) {
                 cv::putText(frame, text, detection.rect.tl(), cv::FONT_HERSHEY_COMPLEX,
                             1.0, cv::Scalar(0, 0, 255), 3);
             }
+          
+            //OVERALL PERSON COUNT
+            std::string opc_count = "Laczna liczba osob: " + std::to_string(tracker->Count());
+            cv::putText(frame, opc_count, cv::Point(5, 100), cv::FONT_ITALIC, 0.7, cv::Scalar(0, 0, 255), 3);
 
+            // LIVE PERSON COUNT
+            std::unordered_map<size_t, std::vector<cv::Point>> active_track_ids = tracker->GetActiveTracks();
+            std::string lpc_count = "Liczba osob: " + std::to_string(active_track_ids.size());
+            cv::putText(frame, lpc_count, cv::Point(5, 150), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 3);
+          
             cv::resize(frame, frame, cv::Size(), 0.5, 0.5);
             cv::imshow("dbg", frame);
             char k = cv::waitKey(delay);
