@@ -21,6 +21,9 @@
 #include <string>
 #include <gflags/gflags.h>
 
+#include <unordered_map>
+#include <chrono>
+
 using namespace InferenceEngine;
 using ImageWithFrameIndex = std::pair<cv::Mat, int>;
 
@@ -83,20 +86,6 @@ bool ParseAndCheckCommandLine(int argc, char *argv[]) {
         return false;
     }
 
-    std::cout << "Parsing input parameters" << std::endl;
-
-    if (FLAGS_i.empty()) {
-        throw std::logic_error("Parameter -i is not set");
-    }
-
-    if (FLAGS_m_det.empty()) {
-        throw std::logic_error("Parameter -m_det is not set");
-    }
-
-    if (FLAGS_m_reid.empty()) {
-        throw std::logic_error("Parameter -m_reid is not set");
-    }
-
     return true;
 }
 
@@ -109,19 +98,9 @@ int main_work(int argc, char **argv) {
 
 
     // Reading command line parameters.
-    auto video_path = FLAGS_i;
-
-    auto det_model = FLAGS_m_det;
-    auto det_weights = fileNameNoExt(FLAGS_m_det) + ".bin";
-
-    auto reid_model = FLAGS_m_reid;
-    auto reid_weights = fileNameNoExt(FLAGS_m_reid) + ".bin";
 
     auto detlog_out = FLAGS_out;
-
-    auto detector_mode = FLAGS_d_det;
-    auto reid_mode = FLAGS_d_reid;
-
+  
     auto custom_cpu_library = FLAGS_l;
     auto path_to_custom_layers = FLAGS_c;
     bool should_use_perf_counter = FLAGS_pc;
@@ -134,15 +113,21 @@ int main_work(int argc, char **argv) {
         delay = -1;
     should_show = (delay >= 0);
 
-    int first_frame = FLAGS_first;
-    int last_frame = FLAGS_last;
-
     bool should_save_det_log = !detlog_out.empty();
+  
+    std::string det_model = "C:\\Program Files (x86)\\IntelSWTools\\openvino_2020.4.287\\deployment_tools\\tools\\model_downloader\\intel\\person-detection-retail-0013\\FP32\\person-detection-retail-0013.xml";
+    std::string det_weights = "C:\\Program Files (x86)\\IntelSWTools\\openvino_2020.4.287\\deployment_tools\\tools\\model_downloader\\intel\\person-detection-retail-0013\\FP32\\person-detection-retail-0013.bin";
 
-    if (first_frame >= 0)
-        std::cout << "first_frame = " << first_frame << std::endl;
-    if (last_frame >= 0)
-        std::cout << "last_frame = " << last_frame << std::endl;
+    std::string reid_model = "C:\\Program Files (x86)\\IntelSWTools\\openvino_2020.4.287\\deployment_tools\\tools\\model_downloader\\intel\\person-reidentification-retail-0248\\FP32\\person-reidentification-retail-0248.xml";
+    std::string reid_weights = "C:\\Program Files (x86)\\IntelSWTools\\openvino_2020.4.287\\deployment_tools\\tools\\model_downloader\\intel\\person-reidentification-retail-0248\\FP32\\person-reidentification-retail-0248.bin";
+
+    //human pose
+    std::string human_pose_model = "C:\\Program Files (x86)\\IntelSWTools\\openvino_2020.4.287\\deployment_tools\\tools\\model_downloader\\intel\\human-pose-estimation-0001\\FP32\\human-pose-estimation-0001.xml";
+    std::string human_pose_weights = "C:\\Program Files (x86)\\IntelSWTools\\openvino_2020.4.287\\deployment_tools\\tools\\model_downloader\\intel\\human-pose-estimation-0001\\FP32\\human-pose-estimation-0001.bin";
+
+    auto detector_mode = "CPU";
+    auto reid_mode = "CPU";
+    auto human_pose_detector_mode = "CPU";
 
     std::vector<std::string> devices{detector_mode, reid_mode};
     InferenceEngine::Core ie =
@@ -158,42 +143,35 @@ int main_work(int argc, char **argv) {
         CreatePedestrianTracker(reid_model, reid_weights, ie, reid_mode,
                                 should_keep_tracking_info);
 
-
+    DetectorConfig human_pose_config(human_pose_model);
+    ObjectDetector human_pose_detector(human_pose_config, ie, human_pose_detector_mode);
+  
     // Opening video.
-    std::unique_ptr<ImageReader> video =
-        ImageReader::CreateImageReaderForPath(video_path);
+    cv::VideoCapture cap;
 
-    PT_CHECK(video->IsOpened()) << "Failed to open video: " << video_path;
-    double video_fps = video->GetFrameRate();
+    cap.open("C:\\Users\\Seq\\Documents\\Intel\\OpenVINO\\omz_demos_build\\intel64\\Release\\Safety_Full_Hat_and_Vest.mp4");
+    cv::Mat frame;
 
-    if (first_frame > 0)
-        video->SetFrameIndex(first_frame);
+    double video_fps = 25;
+  
+    int frame_idx = 0;
 
-    std::cout << "To close the application, press 'CTRL+C' here";
-    if (!FLAGS_no_show) {
-        std::cout << " or switch to the output window and press ESC key";
-    }
-    std::cout << std::endl;
-
+    cv::Size graphSize{static_cast<int>(cap.get(cv::CAP_PROP_FRAME_WIDTH) / 4), 60};
+    Presenter presenter(FLAGS_u, 10, graphSize);
+ 
     for (;;) {
-        auto pair = video->Read();
-        cv::Mat frame = pair.first;
-        int frame_idx = pair.second;
-
-        if (frame.empty()) break;
-
-        PT_CHECK(frame_idx >= first_frame);
-
-        if ( (last_frame >= 0) && (frame_idx > last_frame) ) {
-            std::cout << "Frame " << frame_idx << " is greater than last_frame = "
-                << last_frame << " -- break";
-            break;
-        }
+        cap.read(frame);
+        frame_idx = frame_idx + 1;
 
         pedestrian_detector.submitFrame(frame, frame_idx);
         pedestrian_detector.waitAndFetchResults();
 
         TrackedObjects detections = pedestrian_detector.getResults();
+    
+        human_pose_detector.submitFrame(frame, frame_idx);
+        human_pose_detector.waitAndFetchResults();
+
+        TrackedObjects humanPoseDetections = human_pose_detector.getResults();
 
         // timestamp in milliseconds
         uint64_t cur_timestamp = static_cast<uint64_t >(1000.0 / video_fps * frame_idx);
